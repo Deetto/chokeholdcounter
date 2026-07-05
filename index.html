@@ -114,9 +114,12 @@ button:active {
 .btn-inc {
   flex: 3;
   background: #f2c200;
-  color: #0b0b0d;
+  color: #ffffff;
   font-size: clamp(20px, 6vw, 26px);
   padding: 18px 10px;
+  border: 3px solid #0b0b0d;
+  -webkit-text-stroke: 1px #0b0b0d;
+  text-shadow: -1px -1px 0 #0b0b0d, 1px -1px 0 #0b0b0d, -1px 1px 0 #0b0b0d, 1px 1px 0 #0b0b0d;
 }
 
 .btn-reset {
@@ -185,7 +188,7 @@ button:active {
 <body>
 
 <h1>The Choke-Hold Counter</h1>
-<div class="subtitle">tracking every goon our forearms have silenced</div>
+<div class="subtitle">tracking every goon Batman's forearms have silenced</div>
 
 <img class="illustration" src="illustration.png" alt="Choke-hold illustration">
 
@@ -198,12 +201,12 @@ button:active {
 </div>
 
 <div class="footer-note">
-  Shared counter &mdash; every tap updates for both of you, wherever you are.
+  Shared counter.
 </div>
 
 <div class="overlay" id="overlay">
   <div class="dialog">
-    <p>Reset the SHARED count back to zero for both of you?</p>
+    <p>Reset the count back to zero?</p>
     <div class="dialog-buttons">
       <button class="btn-cancel" id="cancelBtn">Cancel</button>
       <button class="btn-reset" id="confirmResetBtn">Reset</button>
