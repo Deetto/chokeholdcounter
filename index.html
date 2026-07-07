@@ -174,6 +174,29 @@ button:active {
   gap: 10px;
 }
 
+.mode-toggle {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #151517;
+  border: 1px solid #4a4a4d;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  padding: 0;
+}
+
+.mode-toggle:active {
+  transform: scale(0.92);
+}
+
 .dialog-buttons button {
   flex: 1;
   padding: 12px;
@@ -187,6 +210,8 @@ button:active {
 </style>
 </head>
 <body>
+
+<button class="mode-toggle" id="modeToggle" title="Toggle sync mode">🔄</button>
 
 <h1>The Choke-Hold Counter</h1>
 <div class="subtitle">tracking every goon Batman's forearms have silenced</div>
@@ -221,6 +246,10 @@ button:active {
 const API_BASE = 'https://countapi.mileshilliard.com/api/v1';
 const COUNTER_KEY = 'deetto-and-partner-batman-chokehold-tally-v1';
 const LOCAL_CACHE_KEY = 'chokehold_count_cache';
+const MODE_KEY = 'chokehold_mode';
+const LOCAL_COUNT_KEY = 'chokehold_local_count';
+
+let mode = localStorage.getItem(MODE_KEY) || 'synced';
 
 const countEl = document.getElementById('count');
 const syncStatus = document.getElementById('syncStatus');
@@ -229,6 +258,7 @@ const resetBtn = document.getElementById('resetBtn');
 const overlay = document.getElementById('overlay');
 const cancelBtn = document.getElementById('cancelBtn');
 const confirmResetBtn = document.getElementById('confirmResetBtn');
+const modeToggle = document.getElementById('modeToggle');
 
 function showCount(value) {
   countEl.textContent = value;
@@ -244,12 +274,31 @@ function pulse() {
   setTimeout(() => countEl.classList.remove('pulse'), 120);
 }
 
+function getLocalCount() {
+  const v = parseInt(localStorage.getItem(LOCAL_COUNT_KEY) || '0', 10);
+  return isNaN(v) ? 0 : v;
+}
+
+function setLocalCount(value) {
+  localStorage.setItem(LOCAL_COUNT_KEY, String(value));
+}
+
+function updateModeUI() {
+  if (mode === 'synced') {
+    modeToggle.textContent = '🔄';
+    modeToggle.title = 'Synced - tap to switch to local mode';
+  } else {
+    modeToggle.textContent = '🚫';
+    modeToggle.title = 'Local-only - tap to switch back to synced';
+  }
+}
+
 function enableButtons(enabled) {
   incBtn.disabled = !enabled;
   resetBtn.disabled = !enabled;
 }
 
-async function fetchCount() {
+async function fetchSyncedCount() {
   try {
     const res = await fetch(`${API_BASE}/get/${COUNTER_KEY}`);
     if (res.status === 404) {
@@ -271,10 +320,30 @@ async function fetchCount() {
   }
 }
 
+function loadCurrentModeCount() {
+  if (mode === 'synced') {
+    fetchSyncedCount();
+  } else {
+    showCount(getLocalCount());
+    setStatus('local mode - not synced');
+    enableButtons(true);
+  }
+}
+
 async function increment() {
   enableButtons(false);
   pulse();
   if (navigator.vibrate) navigator.vibrate(20);
+
+  if (mode === 'local') {
+    const newValue = getLocalCount() + 1;
+    setLocalCount(newValue);
+    showCount(newValue);
+    setStatus('local mode - not synced');
+    enableButtons(true);
+    return;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/hit/${COUNTER_KEY}`);
     const data = await res.json();
@@ -289,6 +358,15 @@ async function increment() {
 
 async function resetCount() {
   enableButtons(false);
+
+  if (mode === 'local') {
+    setLocalCount(0);
+    showCount(0);
+    setStatus('local mode — not synced with your partner');
+    enableButtons(true);
+    return;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/set/${COUNTER_KEY}?value=0`);
     const data = await res.json();
@@ -302,6 +380,13 @@ async function resetCount() {
 }
 
 incBtn.addEventListener('click', increment);
+
+modeToggle.addEventListener('click', () => {
+  mode = (mode === 'synced') ? 'local' : 'synced';
+  localStorage.setItem(MODE_KEY, mode);
+  updateModeUI();
+  loadCurrentModeCount();
+});
 
 resetBtn.addEventListener('click', () => {
   overlay.classList.add('show');
@@ -319,10 +404,11 @@ confirmResetBtn.addEventListener('click', () => {
 // Refresh when the tab/app becomes visible again, so if your partner tapped
 // while your phone was locked, you see the updated number.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') fetchCount();
+  if (document.visibilityState === 'visible') loadCurrentModeCount();
 });
 
-fetchCount();
+updateModeUI();
+loadCurrentModeCount();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
